@@ -1,4 +1,4 @@
 [workspace]
 
-members = ["day1"]
+members = ["day01"]
 resolver = "2"
