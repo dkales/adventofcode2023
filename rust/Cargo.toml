@@ -1,8 +1,8 @@
 [workspace]
 
-members = ["day01", "day02", "day03", "day04"]
+members = ["day01", "day02", "day03", "day04", "meta"]
 resolver = "2"
 
 
 [workspace.dependencies]
-aoc-traits = { git = "https://github.com/dkales/adventofcode2023-leaderboard", rev = "f63b3607080ba9c4c4da92423c88299670514d89" }
+aoc-traits = { git = "https://github.com/dkales/adventofcode2023-leaderboard", rev = "16aac98471cab02bb856980dbc469de4b0a7f657" }
