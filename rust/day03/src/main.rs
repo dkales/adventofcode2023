@@ -71,14 +71,11 @@ impl Grid {
 
         for (row_idx, row) in self.cells.iter().enumerate() {
             for (col_idx, col) in row.iter().enumerate() {
-                match col {
-                    Cell::Symbol('*') => {
-                        let neighbors = self.get_number_neighbors(row_idx, col_idx);
-                        if neighbors.len() == 2 {
-                            gears.push(*neighbors[0] * *neighbors[1]);
-                        }
+                if let Cell::Symbol('*') = col {
+                    let neighbors = self.get_number_neighbors(row_idx, col_idx);
+                    if neighbors.len() == 2 {
+                        gears.push(*neighbors[0] * *neighbors[1]);
                     }
-                    _ => {}
                 }
             }
         }
