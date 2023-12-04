@@ -2,3 +2,7 @@
 
 members = ["day01", "day02", "day03", "day04"]
 resolver = "2"
+
+
+[workspace.dependencies]
+aoc-traits = { git = "https://github.com/dkales/adventofcode2023-leaderboard", rev = "f63b3607080ba9c4c4da92423c88299670514d89" }
