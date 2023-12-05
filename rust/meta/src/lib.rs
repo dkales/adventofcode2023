@@ -2,7 +2,7 @@ use aoc_traits::AdventOfCodeSolutions;
 
 pub struct AoC2023;
 
-impl AdventOfCodeSolutions<'_> for AoC2023 {
+impl AdventOfCodeSolutions for AoC2023 {
     type Day01 = day01::Day1Solver;
 
     type Day02 = day02::Day2Solver;

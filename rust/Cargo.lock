@@ -68,7 +68,7 @@ dependencies = [
 [[package]]
 name = "aoc-traits"
 version = "0.1.0"
-source = "git+https://github.com/dkales/adventofcode2023-leaderboard?rev=16aac98471cab02bb856980dbc469de4b0a7f657#16aac98471cab02bb856980dbc469de4b0a7f657"
+source = "git+https://github.com/dkales/adventofcode2023-leaderboard?rev=ac544663758c2dca2ee892fd7ab59419999350dc#ac544663758c2dca2ee892fd7ab59419999350dc"
 
 [[package]]
 name = "backtrace"
