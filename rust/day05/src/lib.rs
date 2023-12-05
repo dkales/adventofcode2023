@@ -30,6 +30,36 @@ impl MappingRange {
     }
 }
 
+fn apply_ranges_to_range(mapping_ranges: &[MappingRange], range: Range<u64>) -> Vec<Range<u64>> {
+    let mut result = Vec::new();
+    let mut ranges = vec![range];
+    for map_range in mapping_ranges {
+        // find the overlap of the two ranges
+        ranges = ranges
+            .into_iter()
+            .flat_map(|r| {
+                let maybe_map = map_range.range.start.max(r.start)..map_range.range.end.min(r.end);
+                if maybe_map.is_empty() {
+                    return vec![r];
+                }
+
+                //otherwise, map the overlap
+                result.push(
+                    maybe_map.start - map_range.range.start + map_range.map_start
+                        ..maybe_map.end - map_range.range.start + map_range.map_start,
+                );
+                vec![
+                    r.start..maybe_map.start, // do not map this
+                    maybe_map.end..r.end,     // do not map this
+                ]
+            })
+            .filter(|r| !r.is_empty()) // throw out empty ranges
+            .collect();
+    }
+    // all unmapped ranges go into result
+    result.extend(ranges.into_iter());
+    result
+}
 fn apply_ranges(ranges: &[MappingRange], input: u64) -> u64 {
     ranges.iter().find_map(|r| r.map(input)).unwrap_or(input)
 }
@@ -92,6 +122,20 @@ fn apply_mappings(mappings: &[Vec<MappingRange>], input: u64) -> u64 {
     }
     s
 }
+fn apply_mappings_to_ranges(
+    mappings: &[Vec<MappingRange>],
+    ranges: Vec<Range<u64>>,
+) -> Vec<Range<u64>> {
+    let mut s = ranges;
+    for mapping in mappings {
+        s = s
+            .into_iter()
+            .map(|r| apply_ranges_to_range(&mapping, r))
+            .flatten()
+            .collect();
+    }
+    s
+}
 
 fn solve_stage1(input: &Game) -> u64 {
     input
@@ -103,16 +147,11 @@ fn solve_stage1(input: &Game) -> u64 {
 }
 
 fn solve_stage2(input: &Game) -> u64 {
-    input
-        .seeds
-        .chunks(2)
-        .map(|s| s[0]..(s[0] + s[1]))
-        .map(|r| {
-            r.into_iter()
-                .map(|s| apply_mappings(&input.mappings, s))
-                .min()
-                .unwrap_or(u64::MAX)
-        })
+    let ranges = input.seeds.chunks(2).map(|s| s[0]..(s[0] + s[1])).collect();
+    let mapped_ranges = apply_mappings_to_ranges(&input.mappings, ranges);
+    mapped_ranges
+        .iter()
+        .map(|r| r.start)
         .min()
         .unwrap_or_default()
 }
