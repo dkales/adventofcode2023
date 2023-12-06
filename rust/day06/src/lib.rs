@@ -115,6 +115,6 @@ Distance:  9  40  200";
     #[test]
     fn test_stage2() {
         let input = super::parse(TEST_INPUT).unwrap();
-        assert_eq!(super::solve_stage2(&input), 46);
+        assert_eq!(super::solve_stage2(&input), 71503);
     }
 }
