@@ -20,7 +20,6 @@ pub struct Game {
 impl Game {
     fn ways_to_beat(&self) -> u64 {
         (1..self.time)
-            .into_iter()
             .map(|t| (self.time - t) * t)
             .filter(|x| *x > self.distance)
             .count() as u64
@@ -45,7 +44,7 @@ fn parse_games(input: &str) -> IResult<&str, Vec<Game>> {
     // skip a line
     let games = times
         .into_iter()
-        .zip(dists.into_iter())
+        .zip(dists)
         .map(|(t, r)| Game {
             time: t,
             distance: r,
@@ -91,11 +90,11 @@ impl AdventOfCodeDay<'_> for Day6Solver {
     type Part2Output = u64;
 
     fn solve_part1(input: &Self::ParsedInput) -> Self::Part1Output {
-        solve_stage1(input).into()
+        solve_stage1(input)
     }
 
     fn solve_part2(input: &Self::ParsedInput) -> Self::Part2Output {
-        solve_stage2(input).into()
+        solve_stage2(input)
     }
 
     fn parse_input(input: &'_ str) -> Self::ParsedInput {

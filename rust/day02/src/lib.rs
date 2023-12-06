@@ -128,7 +128,7 @@ impl AdventOfCodeDay<'_> for Day2Solver {
     }
 
     fn solve_part2(input: &Self::ParsedInput) -> Self::Part2Output {
-        solve_stage2(&input).into()
+        solve_stage2(input).into()
     }
 
     fn parse_input(input: &'_ str) -> Self::ParsedInput {

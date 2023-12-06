@@ -57,7 +57,7 @@ fn apply_ranges_to_range(mapping_ranges: &[MappingRange], range: Range<u64>) -> 
             .collect();
     }
     // all unmapped ranges go into result
-    result.extend(ranges.into_iter());
+    result.extend(ranges);
     result
 }
 fn apply_ranges(ranges: &[MappingRange], input: u64) -> u64 {
@@ -118,7 +118,7 @@ fn parse(input: &str) -> Result<Game> {
 fn apply_mappings(mappings: &[Vec<MappingRange>], input: u64) -> u64 {
     let mut s = input;
     for mapping in mappings {
-        s = apply_ranges(&mapping, s);
+        s = apply_ranges(mapping, s);
     }
     s
 }
@@ -130,8 +130,7 @@ fn apply_mappings_to_ranges(
     for mapping in mappings {
         s = s
             .into_iter()
-            .map(|r| apply_ranges_to_range(&mapping, r))
-            .flatten()
+            .flat_map(|r| apply_ranges_to_range(mapping, r))
             .collect();
     }
     s
@@ -165,11 +164,11 @@ impl AdventOfCodeDay<'_> for Day5Solver {
     type Part2Output = u64;
 
     fn solve_part1(input: &Self::ParsedInput) -> Self::Part1Output {
-        solve_stage1(input).into()
+        solve_stage1(input)
     }
 
     fn solve_part2(input: &Self::ParsedInput) -> Self::Part2Output {
-        solve_stage2(input).into()
+        solve_stage2(input)
     }
 
     fn parse_input(input: &'_ str) -> Self::ParsedInput {
