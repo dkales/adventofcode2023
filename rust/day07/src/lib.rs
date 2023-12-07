@@ -115,20 +115,20 @@ fn hand_type_joker(cards: [Card; 5]) -> HandType {
         counts.entry(card).and_modify(|c| *c += 1).or_insert(1);
     }
     let joker_count = counts.remove(&Card::Joker).unwrap_or(0);
-    let counts = counts.values().copied().map(|x| x).collect::<Vec<_>>();
+    let counts = counts.values().copied().collect::<Vec<_>>();
     match joker_count {
-        5 => return HandType::FiveOfAKind, // 5 jokers
-        4 => return HandType::FiveOfAKind, // 4 jokers + 1 card
+        5 => HandType::FiveOfAKind, // 5 jokers
+        4 => HandType::FiveOfAKind, // 4 jokers + 1 card
         3 => {
             if counts.contains(&2) {
-                return HandType::FiveOfAKind; // 3 jokers +1 pair
+                HandType::FiveOfAKind// 3 jokers +1 pair
             } else {
-                return HandType::FourOfAKind; // 3 jokers + high card
+                HandType::FourOfAKind// 3 jokers + high card
             }
         }
         2 => {
             if counts.contains(&3) {
-                return HandType::FiveOfAKind; // 2 jokers + 3 of a kind
+                HandType::FiveOfAKind// 2 jokers + 3 of a kind
             } else if counts.contains(&2) {
                 // this gets always mapped to four of a kind instead of full house since it is better
                 return HandType::FourOfAKind; // 2 jokers + 1 pair + 1 card
@@ -138,7 +138,7 @@ fn hand_type_joker(cards: [Card; 5]) -> HandType {
         }
         1 => {
             if counts.contains(&4) {
-                return HandType::FiveOfAKind; // 1 joker + 4 of a kind
+                HandType::FiveOfAKind// 1 joker + 4 of a kind
             } else if counts.contains(&3) {
                 // a three of a kind always gets mapped to four of a kind instead of full house since it is better
                 return HandType::FourOfAKind; // 1 joker + 3 of a kind + 1 card
@@ -152,7 +152,7 @@ fn hand_type_joker(cards: [Card; 5]) -> HandType {
                 return HandType::OnePair; // 1 joker + 4 high cards
             }
         }
-        0 => return hand_type(cards), // no jokers, just use the normal hand type
+        0 => hand_type(cards), // no jokers, just use the normal hand type
         _ => unreachable!(),
     }
 }
@@ -180,7 +180,7 @@ fn parse_u64(input: &str) -> IResult<&str, u64> {
     map_res(digit1, str::parse::<u64>)(input)
 }
 
-fn parse_games<'a>(input: &'a str) -> IResult<&str, Vec<Hand>> {
+fn parse_games(input: &str) -> IResult<&str, Vec<Hand>> {
     let (input, hands) = separated_list1(
         line_ending,
         map(
@@ -192,7 +192,7 @@ fn parse_games<'a>(input: &'a str) -> IResult<&str, Vec<Hand>> {
     Ok((input, hands))
 }
 
-fn parse<'a>(input: &'a str) -> Result<Vec<Hand>> {
+fn parse(input: &str) -> Result<Vec<Hand>> {
     parse_games(input)
         .map_err(|e| eyre::eyre!("Failed to parse input: {}", e))
         .map(|x| x.1)
