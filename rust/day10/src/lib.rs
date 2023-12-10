@@ -159,6 +159,7 @@ fn solve_stage2(input: &Game) -> i64 {
     //print_grid(&grid);
     //print_grid_ext(&grid);
     // mark all border cells as outside
+    #[allow(clippy::needless_range_loop)] // i find the loops to be clearer
     for i in 0..x_dim {
         if grid[i][0] == Phase2Cell::Unknown {
             grid[i][0] = Phase2Cell::Outside;
@@ -182,27 +183,23 @@ fn solve_stage2(input: &Game) -> i64 {
         // we handled the border already, its either outside or wall
         for i in 1..x_dim - 1 {
             for j in 1..y_dim - 1 {
-                match grid[i][j] {
+                if grid[i][j] == Phase2Cell::Unknown {
                     // if an unknown cell is touching an inside cell, it's inside
                     // same for outside
-                    Phase2Cell::Unknown => {
-                        let mut touching_outside = false;
-                        for offset in [(0, 1), (1, 0), (0, -1), (-1, 0)] {
-                            let (x, y) = (
-                                (i as isize + offset.0) as usize,
-                                (j as isize + offset.1) as usize,
-                            );
-                            match grid[x][y] {
-                                Phase2Cell::Outside => touching_outside = true,
-                                _ => {}
-                            }
-                        }
-                        if touching_outside {
-                            grid[i][j] = Phase2Cell::Outside;
-                            changed = true;
+                    let mut touching_outside = false;
+                    for offset in [(0, 1), (1, 0), (0, -1), (-1, 0)] {
+                        let (x, y) = (
+                            (i as isize + offset.0) as usize,
+                            (j as isize + offset.1) as usize,
+                        );
+                        if grid[x][y] == Phase2Cell::Outside {
+                            touching_outside = true;
                         }
                     }
-                    _ => {}
+                    if touching_outside {
+                        grid[i][j] = Phase2Cell::Outside;
+                        changed = true;
+                    }
                 }
             }
         }
@@ -213,14 +210,13 @@ fn solve_stage2(input: &Game) -> i64 {
     grid.iter()
         .skip(1)
         .step_by(2)
-        .map(|x| x.iter().skip(1).step_by(2))
-        .flatten()
+        .flat_map(|x| x.iter().skip(1).step_by(2))
         .filter(|&&x| x == Phase2Cell::Unknown)
         .count() as i64
 }
 
 #[allow(unused)]
-fn print_grid_ext(grid: &Vec<Vec<Phase2Cell>>) {
+fn print_grid_ext(grid: &[Vec<Phase2Cell>]) {
     for row in grid {
         for cell in row {
             match cell {
@@ -234,7 +230,7 @@ fn print_grid_ext(grid: &Vec<Vec<Phase2Cell>>) {
 }
 
 #[allow(unused)]
-fn print_grid(grid: &Vec<Vec<Phase2Cell>>) {
+fn print_grid(grid: &[Vec<Phase2Cell>]) {
     for row in grid.iter().skip(1).step_by(2) {
         for cell in row.iter().skip(1).step_by(2) {
             match cell {

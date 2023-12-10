@@ -68,7 +68,7 @@ fn solve_stage2(input: &Game) -> u64 {
     let mut current: Vec<_> = input
         .mappings
         .keys()
-        .filter(|node| node.ends_with("A"))
+        .filter(|node| node.ends_with('A'))
         .copied()
         .collect();
 
@@ -83,7 +83,7 @@ fn solve_stage2(input: &Game) -> u64 {
                 'R' => *node = mapping.1,
                 _ => unreachable!(),
             }
-            if node.ends_with("Z") {
+            if node.ends_with('Z') {
                 goals[j].push(((i + 1) as u64, *node));
                 let num_goals = goals[j].len();
                 if num_goals > 2 {
