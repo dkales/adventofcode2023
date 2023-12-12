@@ -3,11 +3,10 @@ use std::{
     fmt::Display,
     iter,
     str::FromStr,
-    sync::{OnceLock, RwLock},
+    sync::{Mutex, OnceLock},
 };
 
 use aoc_traits::AdventOfCodeDay;
-use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Spring {
@@ -50,20 +49,22 @@ impl FromStr for Field {
     }
 }
 
-fn memoizer() -> &'static RwLock<HashMap<(Vec<Spring>, Vec<usize>), u64>> {
-    static ARRAY: OnceLock<RwLock<HashMap<(Vec<Spring>, Vec<usize>), u64>>> = OnceLock::new();
-    ARRAY.get_or_init(|| RwLock::new(HashMap::new()))
+type Memoizer = Mutex<HashMap<(Vec<Spring>, Vec<usize>), u64>>;
+
+fn memoizer() -> &'static Memoizer {
+    static ARRAY: OnceLock<Memoizer> = OnceLock::new();
+    ARRAY.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 fn num_valid_wrapper(springs: &mut [Spring], chunks: &[usize]) -> u64 {
-    if springs.len() == 0 && chunks.len() == 0 {
+    if springs.is_empty() && chunks.is_empty() {
         return 1;
     }
-    if springs.len() == 0 && chunks.len() != 0 {
+    if springs.is_empty() && !chunks.is_empty() {
         return 0;
     }
     if let Some(val) = memoizer()
-        .read()
+        .lock()
         .unwrap()
         .get(&(springs.to_vec(), chunks.to_vec()))
         .copied()
@@ -72,15 +73,15 @@ fn num_valid_wrapper(springs: &mut [Spring], chunks: &[usize]) -> u64 {
     }
     let (s, c) = (springs.to_vec(), chunks.to_vec());
     let res = num_valid(springs, chunks);
-    memoizer().write().unwrap().insert((s, c), res);
+    memoizer().lock().unwrap().insert((s, c), res);
     res
 }
 
 fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
-    if springs.len() == 0 && chunks.len() == 0 {
+    if springs.is_empty() && chunks.is_empty() {
         return 1;
     }
-    if springs.len() == 0 && chunks.len() != 0 {
+    if springs.is_empty() && !chunks.is_empty() {
         return 0;
     }
     // shortcut if len is exactly as needed to fit all chunks + seperator
@@ -106,28 +107,28 @@ fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
         Spring::Working => return num_valid_wrapper(&mut springs[1..], chunks),
         // # prefixes must be the size of the chunk
         Spring::Broken => {
-            if chunks.len() == 0 {
+            if chunks.is_empty() {
                 return 0;
             }
             if chunks[0] > springs.len() {
                 return 0;
             }
-            for i in 0..chunks[0] {
+            for spring in springs.iter().take(chunks[0]) {
                 // must be broken or unknown
-                if springs[i] == Spring::Working {
+                if spring == &Spring::Working {
                     return 0;
                 }
             }
             let springs = &mut springs[chunks[0]..];
             let chunks = &chunks[1..];
-            if springs.len() == 0 {
-                if chunks.len() == 0 {
+            if springs.is_empty() {
+                if chunks.is_empty() {
                     return 1;
                 } else {
                     return 0;
                 }
             }
-            if chunks.len() == 0 {
+            if chunks.is_empty() {
                 return if springs.iter().all(|x| *x != Spring::Broken) {
                     1
                 } else {
@@ -137,7 +138,7 @@ fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
             if springs[0] == Spring::Broken {
                 return 0;
             }
-            return num_valid_wrapper(&mut springs[1..], &chunks);
+            return num_valid_wrapper(&mut springs[1..], chunks);
         }
         _ => (), // handle unknwns later
     };
@@ -147,7 +148,7 @@ fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
             // remove . suffixes
             Spring::Working => return num_valid_wrapper(&mut springs[..springs_len - 1], chunks),
             Spring::Broken => {
-                if chunks.len() == 0 {
+                if chunks.is_empty() {
                     return 0;
                 }
                 if chunks[chunks.len() - 1] > springs.len() {
@@ -161,14 +162,14 @@ fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
                 }
                 let springs = &mut springs[..springs_len - chunks[chunks.len() - 1]];
                 let chunks = &chunks[..chunks.len() - 1];
-                if springs.len() == 0 {
-                    if chunks.len() == 0 {
+                if springs.is_empty() {
+                    if chunks.is_empty() {
                         return 1;
                     } else {
                         return 0;
                     }
                 }
-                if chunks.len() == 0 {
+                if chunks.is_empty() {
                     return if springs.iter().all(|x| *x != Spring::Broken) {
                         1
                     } else {
@@ -179,7 +180,7 @@ fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
                     return 0;
                 }
                 let springs_len = springs.len();
-                return num_valid_wrapper(&mut springs[..springs_len - 1], &chunks);
+                return num_valid_wrapper(&mut springs[..springs_len - 1], chunks);
             }
             _ => (),
         }
@@ -196,7 +197,7 @@ fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
         new[springs.len() - 1] = Spring::Working;
         springs[springs.len() - 1] = Spring::Broken;
     }
-    return num_valid_wrapper(&mut new, chunks) + num_valid_wrapper(springs, chunks);
+    num_valid_wrapper(&mut new, chunks) + num_valid_wrapper(springs, chunks)
 }
 
 impl Field {
@@ -233,7 +234,7 @@ fn solve_stage1(input: &[Field]) -> u64 {
 fn solve_stage2(input: &[Field]) -> u64 {
     let mut unfolded = input.iter().map(|x| x.unfold()).collect::<Vec<_>>();
     unfolded
-        .par_iter_mut()
+        .iter_mut()
         .map(|x| num_valid(&mut x.springs, &x.chunks))
         .sum()
 }
