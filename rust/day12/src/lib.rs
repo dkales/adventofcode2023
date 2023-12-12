@@ -1,13 +1,29 @@
-use std::{iter, str::FromStr};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    iter,
+    str::FromStr,
+    sync::{OnceLock, RwLock},
+};
 
 use aoc_traits::AdventOfCodeDay;
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Spring {
     Working,
     Broken,
     Unknown,
+}
+
+impl Display for Spring {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Spring::Working => write!(f, "."),
+            Spring::Broken => write!(f, "#"),
+            Spring::Unknown => write!(f, "?"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -32,6 +48,32 @@ impl FromStr for Field {
         let chunks = chunks.split(',').map(|x| x.parse().unwrap()).collect();
         Ok(Field { springs, chunks })
     }
+}
+
+fn memoizer() -> &'static RwLock<HashMap<(Vec<Spring>, Vec<usize>), u64>> {
+    static ARRAY: OnceLock<RwLock<HashMap<(Vec<Spring>, Vec<usize>), u64>>> = OnceLock::new();
+    ARRAY.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+fn num_valid_wrapper(springs: &mut [Spring], chunks: &[usize]) -> u64 {
+    if springs.len() == 0 && chunks.len() == 0 {
+        return 1;
+    }
+    if springs.len() == 0 && chunks.len() != 0 {
+        return 0;
+    }
+    if let Some(val) = memoizer()
+        .read()
+        .unwrap()
+        .get(&(springs.to_vec(), chunks.to_vec()))
+        .copied()
+    {
+        return val;
+    }
+    let (s, c) = (springs.to_vec(), chunks.to_vec());
+    let res = num_valid(springs, chunks);
+    memoizer().write().unwrap().insert((s, c), res);
+    res
 }
 
 fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
@@ -61,7 +103,7 @@ fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
     }
     match springs[0] {
         // remove . prefixes
-        Spring::Working => return num_valid(&mut springs[1..], chunks),
+        Spring::Working => return num_valid_wrapper(&mut springs[1..], chunks),
         // # prefixes must be the size of the chunk
         Spring::Broken => {
             if chunks.len() == 0 {
@@ -95,7 +137,7 @@ fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
             if springs[0] == Spring::Broken {
                 return 0;
             }
-            return num_valid(&mut springs[1..], &chunks);
+            return num_valid_wrapper(&mut springs[1..], &chunks);
         }
         _ => (), // handle unknwns later
     };
@@ -103,7 +145,7 @@ fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
     if springs_len > 1 {
         match springs[springs.len() - 1] {
             // remove . suffixes
-            Spring::Working => return num_valid(&mut springs[..springs_len - 1], chunks),
+            Spring::Working => return num_valid_wrapper(&mut springs[..springs_len - 1], chunks),
             Spring::Broken => {
                 if chunks.len() == 0 {
                     return 0;
@@ -137,7 +179,7 @@ fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
                     return 0;
                 }
                 let springs_len = springs.len();
-                return num_valid(&mut springs[..springs_len - 1], &chunks);
+                return num_valid_wrapper(&mut springs[..springs_len - 1], &chunks);
             }
             _ => (),
         }
@@ -154,7 +196,7 @@ fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
         new[springs.len() - 1] = Spring::Working;
         springs[springs.len() - 1] = Spring::Broken;
     }
-    return num_valid(&mut new, chunks) + num_valid(springs, chunks);
+    return num_valid_wrapper(&mut new, chunks) + num_valid_wrapper(springs, chunks);
 }
 
 impl Field {
@@ -192,19 +234,7 @@ fn solve_stage2(input: &[Field]) -> u64 {
     let mut unfolded = input.iter().map(|x| x.unfold()).collect::<Vec<_>>();
     unfolded
         .par_iter_mut()
-        .enumerate()
-        .map(|(i, x)| {
-            println!("starting {i}");
-            let start = std::time::Instant::now();
-            let x = num_valid(&mut x.springs, &x.chunks);
-            println!(
-                "finished {}: {}, took {} sec",
-                i,
-                x,
-                start.elapsed().as_secs_f64()
-            );
-            x
-        })
+        .map(|x| num_valid(&mut x.springs, &x.chunks))
         .sum()
 }
 
