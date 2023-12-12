@@ -1,6 +1,7 @@
-use std::{collections::VecDeque, str::FromStr};
+use std::{iter, str::FromStr};
 
 use aoc_traits::AdventOfCodeDay;
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Spring {
@@ -9,6 +10,7 @@ enum Spring {
     Unknown,
 }
 
+#[derive(Debug)]
 pub struct Field {
     springs: Vec<Spring>,
     chunks: Vec<usize>,
@@ -32,56 +34,178 @@ impl FromStr for Field {
     }
 }
 
-fn is_valid(springs: &[Spring], chunks: &[usize]) -> bool {
-    let mut found_chunks = Vec::with_capacity(chunks.len());
-    let mut cur = None;
-    for (i, s) in springs.iter().enumerate() {
-        if *s == Spring::Working && cur.is_some() {
-            found_chunks.push(i - cur.unwrap());
-            cur = None;
-        } else if *s == Spring::Broken && cur.is_none() {
-            cur = Some(i);
+fn num_valid(springs: &mut [Spring], chunks: &[usize]) -> u64 {
+    if springs.len() == 0 && chunks.len() == 0 {
+        return 1;
+    }
+    if springs.len() == 0 && chunks.len() != 0 {
+        return 0;
+    }
+    // shortcut if len is exactly as needed to fit all chunks + seperator
+    if springs.len() == chunks.iter().sum::<usize>() + chunks.len() - 1 {
+        let mut i = 0;
+        for chunk in chunks {
+            for _ in 0..*chunk {
+                if springs[i] == Spring::Working {
+                    return 0;
+                }
+                i += 1;
+            }
+            if i < springs.len() && springs[i] == Spring::Broken {
+                return 0;
+            }
+            i += 1;
+        }
+
+        return 1;
+    }
+    match springs[0] {
+        // remove . prefixes
+        Spring::Working => return num_valid(&mut springs[1..], chunks),
+        // # prefixes must be the size of the chunk
+        Spring::Broken => {
+            if chunks.len() == 0 {
+                return 0;
+            }
+            if chunks[0] > springs.len() {
+                return 0;
+            }
+            for i in 0..chunks[0] {
+                // must be broken or unknown
+                if springs[i] == Spring::Working {
+                    return 0;
+                }
+            }
+            let springs = &mut springs[chunks[0]..];
+            let chunks = &chunks[1..];
+            if springs.len() == 0 {
+                if chunks.len() == 0 {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            }
+            if chunks.len() == 0 {
+                return if springs.iter().all(|x| *x != Spring::Broken) {
+                    1
+                } else {
+                    0
+                };
+            }
+            if springs[0] == Spring::Broken {
+                return 0;
+            }
+            return num_valid(&mut springs[1..], &chunks);
+        }
+        _ => (), // handle unknwns later
+    };
+    let springs_len = springs.len();
+    if springs_len > 1 {
+        match springs[springs.len() - 1] {
+            // remove . suffixes
+            Spring::Working => return num_valid(&mut springs[..springs_len - 1], chunks),
+            Spring::Broken => {
+                if chunks.len() == 0 {
+                    return 0;
+                }
+                if chunks[chunks.len() - 1] > springs.len() {
+                    return 0;
+                }
+                for i in 0..chunks[chunks.len() - 1] {
+                    // must be broken or unknown
+                    if springs[springs_len - 1 - i] == Spring::Working {
+                        return 0;
+                    }
+                }
+                let springs = &mut springs[..springs_len - chunks[chunks.len() - 1]];
+                let chunks = &chunks[..chunks.len() - 1];
+                if springs.len() == 0 {
+                    if chunks.len() == 0 {
+                        return 1;
+                    } else {
+                        return 0;
+                    }
+                }
+                if chunks.len() == 0 {
+                    return if springs.iter().all(|x| *x != Spring::Broken) {
+                        1
+                    } else {
+                        0
+                    };
+                }
+                if springs.last().unwrap() == &Spring::Broken {
+                    return 0;
+                }
+                let springs_len = springs.len();
+                return num_valid(&mut springs[..springs_len - 1], &chunks);
+            }
+            _ => (),
         }
     }
-    if cur != None {
-        found_chunks.push(springs.len() - cur.unwrap());
+
+    // split unkowns into two branches, starting with the one that has the larger chunk at its side
+    let mut new = springs.to_vec();
+    if chunks.first().unwrap() <= chunks.last().unwrap() {
+        assert!(springs[0] == Spring::Unknown);
+        new[0] = Spring::Working;
+        springs[0] = Spring::Broken;
+    } else {
+        assert!(springs[springs.len() - 1] == Spring::Unknown);
+        new[springs.len() - 1] = Spring::Working;
+        springs[springs.len() - 1] = Spring::Broken;
     }
-    found_chunks == chunks
+    return num_valid(&mut new, chunks) + num_valid(springs, chunks);
 }
 
 impl Field {
-    fn possible_solutions(&self) -> u64 {
-        let variants = self
+    fn unfold(&self) -> Field {
+        let springs = self
             .springs
             .iter()
-            .filter(|x| **x == Spring::Unknown)
-            .count();
-        let variants = 1usize << variants;
-        let mut solutions = VecDeque::new();
-        solutions.push_back(self.springs.clone());
-        while solutions.len() != variants {
-            let mut current = solutions.pop_front().unwrap();
-            let pos = current.iter().position(|x| *x == Spring::Unknown).unwrap();
-            let mut new = current.clone();
-            current[pos] = Spring::Working;
-            new[pos] = Spring::Broken;
-            solutions.push_back(current);
-            solutions.push_back(new);
-        }
-
-        solutions
-            .into_iter()
-            .filter(|x| is_valid(x, &self.chunks))
-            .count() as u64
+            .chain(iter::once(&Spring::Unknown))
+            .cycle()
+            .take(self.springs.len() * 5 + 4)
+            .copied()
+            .collect();
+        let chunks = self
+            .chunks
+            .iter()
+            .cycle()
+            .take(self.chunks.len() * 5)
+            .copied()
+            .collect();
+        Field { springs, chunks }
     }
 }
 
 fn solve_stage1(input: &[Field]) -> u64 {
-    input.iter().map(|x| x.possible_solutions()).sum()
+    input
+        .iter()
+        .map(|x| {
+            let mut springs = x.springs.clone();
+            num_valid(&mut springs, &x.chunks)
+        })
+        .sum()
 }
 
-fn solve_stage2(_input: &[Field]) -> u64 {
-    0
+fn solve_stage2(input: &[Field]) -> u64 {
+    let mut unfolded = input.iter().map(|x| x.unfold()).collect::<Vec<_>>();
+    unfolded
+        .par_iter_mut()
+        .enumerate()
+        .map(|(i, x)| {
+            println!("starting {i}");
+            let start = std::time::Instant::now();
+            let x = num_valid(&mut x.springs, &x.chunks);
+            println!(
+                "finished {}: {}, took {} sec",
+                i,
+                x,
+                start.elapsed().as_secs_f64()
+            );
+            x
+        })
+        .sum()
 }
 
 pub struct Day12Solver;
@@ -122,10 +246,9 @@ mod tests {
         let input = Day12Solver::parse_input(TEST_INPUT);
         assert_eq!(super::solve_stage1(&input), 21);
     }
-    // #[test]
-    // only works for the 100 factor
-    // fn test_stage2() {
-    //     let input = Day11Solver::parse_input(TEST_INPUT);
-    //     assert_eq!(super::solve_stage2(&input), 8410);
-    // }
+    #[test]
+    fn test_stage2() {
+        let input = Day12Solver::parse_input(TEST_INPUT);
+        assert_eq!(super::solve_stage2(&input), 525152);
+    }
 }
