@@ -1,15 +1,15 @@
-use std::{fmt::Display, str::FromStr};
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use aoc_traits::AdventOfCodeDay;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Cell {
     Rock,
     Wall,
     Empty,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Grid {
     lines: Vec<Vec<Cell>>,
 }
@@ -35,25 +35,73 @@ impl Display for Grid {
 }
 
 impl Grid {
-    fn shift_north(&self) -> Grid {
-        let mut res = self.lines.clone();
+    fn shift_north(&mut self) {
         let x = self.lines[0].len();
         let y = self.lines.len();
 
         for i in 1..y {
             for j in 0..x {
-                if res[i][j] == Cell::Rock && res[i - 1][j] == Cell::Empty {
+                if self.lines[i][j] == Cell::Rock && self.lines[i - 1][j] == Cell::Empty {
                     let mut goal = i - 1;
-                    while goal > 0 && res[goal - 1][j] == Cell::Empty {
+                    while goal > 0 && self.lines[goal - 1][j] == Cell::Empty {
                         goal -= 1;
                     }
-                    res[i][j] = Cell::Empty;
-                    res[goal][j] = Cell::Rock;
+                    self.lines[i][j] = Cell::Empty;
+                    self.lines[goal][j] = Cell::Rock;
                 }
             }
         }
+    }
+    fn shift_south(&mut self) {
+        let x = self.lines[0].len();
+        let y = self.lines.len();
 
-        Grid { lines: res }
+        for i in (0..y - 1).rev() {
+            for j in 0..x {
+                if self.lines[i][j] == Cell::Rock && self.lines[i + 1][j] == Cell::Empty {
+                    let mut goal = i + 1;
+                    while goal < y - 1 && self.lines[goal + 1][j] == Cell::Empty {
+                        goal += 1;
+                    }
+                    self.lines[i][j] = Cell::Empty;
+                    self.lines[goal][j] = Cell::Rock;
+                }
+            }
+        }
+    }
+    fn shift_west(&mut self) {
+        let x = self.lines[0].len();
+        let y = self.lines.len();
+
+        for i in 0..y {
+            for j in 1..x {
+                if self.lines[i][j] == Cell::Rock && self.lines[i][j - 1] == Cell::Empty {
+                    let mut goal = j - 1;
+                    while goal > 0 && self.lines[i][goal - 1] == Cell::Empty {
+                        goal -= 1;
+                    }
+                    self.lines[i][j] = Cell::Empty;
+                    self.lines[i][goal] = Cell::Rock;
+                }
+            }
+        }
+    }
+    fn shift_east(&mut self) {
+        let x = self.lines[0].len();
+        let y = self.lines.len();
+
+        for i in 0..y {
+            for j in (0..x - 1).rev() {
+                if self.lines[i][j] == Cell::Rock && self.lines[i][j + 1] == Cell::Empty {
+                    let mut goal = j + 1;
+                    while goal < x - 1 && self.lines[i][goal + 1] == Cell::Empty {
+                        goal += 1;
+                    }
+                    self.lines[i][j] = Cell::Empty;
+                    self.lines[i][goal] = Cell::Rock;
+                }
+            }
+        }
     }
 
     fn count_load(&self) -> usize {
@@ -63,6 +111,30 @@ impl Grid {
             .enumerate()
             .map(|(i, x)| x.iter().filter(|x| **x == Cell::Rock).count() * (y - i))
             .sum()
+    }
+
+    fn cycle(&mut self) {
+        self.shift_north();
+        self.shift_west();
+        self.shift_south();
+        self.shift_east();
+    }
+
+    fn cycle_n(&mut self, n: usize) {
+        let mut cycles = HashMap::new();
+        cycles.insert(self.clone(), 0);
+        for i in 0..n {
+            self.cycle();
+            if let Some(c) = cycles.insert(self.clone(), i + 1) {
+                let cycle_len = i + 1 - c;
+                let remaining = n - i - 1;
+                let remaining = remaining % cycle_len;
+                for _ in 0..remaining {
+                    self.cycle();
+                }
+                break;
+            }
+        }
     }
 }
 
@@ -88,13 +160,16 @@ impl FromStr for Grid {
 }
 
 fn solve_stage1(input: &Grid) -> u64 {
-    let north = input.shift_north();
+    let mut input = input.clone();
+    input.shift_north();
     // println!("{}", north);
-    north.count_load() as u64
+    input.count_load() as u64
 }
 
 fn solve_stage2(input: &Grid) -> u64 {
-    0
+    let mut input = input.clone();
+    input.cycle_n(1_000_000_000);
+    input.count_load() as u64
 }
 
 pub struct Day14Solver;
@@ -142,6 +217,6 @@ O.#..O.#.#
     #[test]
     fn test_stage2() {
         let input = Day14Solver::parse_input(TEST_INPUT);
-        assert_eq!(super::solve_stage2(&input), 400);
+        assert_eq!(super::solve_stage2(&input), 64);
     }
 }
