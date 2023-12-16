@@ -81,8 +81,8 @@ struct Beam {
 impl Beam {
     fn step(&self, grid: &Grid) -> Vec<Beam> {
         let new_pos = (
-            self.pos.0 as isize + self.dir.0,
-            self.pos.1 as isize + self.dir.1,
+            self.pos.0 + self.dir.0,
+            self.pos.1 + self.dir.1,
         );
         // beam left the grid
         if new_pos.0 < 0
@@ -97,35 +97,35 @@ impl Beam {
         match grid.lines[new_pos.0 as usize][new_pos.1 as usize] {
             Cell::Empty => {
                 // continue on
-                return vec![Beam {
+                vec![Beam {
                     pos: new_pos,
                     dir: self.dir,
-                }];
+                }]
             }
             Cell::Mirror1 => {
                 // reflect at \
-                return vec![Beam {
+                vec![Beam {
                     pos: new_pos,
                     dir: (-self.dir.1, -self.dir.0),
-                }];
+                }]
             }
             Cell::Mirror2 => {
                 // reflect at /
-                return vec![Beam {
+                vec![Beam {
                     pos: new_pos,
                     dir: (self.dir.1, self.dir.0),
-                }];
+                }]
             }
             Cell::SplitterH => {
                 if self.dir.0 == 0 {
                     // continue on
-                    return vec![Beam {
+                    vec![Beam {
                         pos: new_pos,
                         dir: self.dir,
-                    }];
+                    }]
                 } else {
                     // split
-                    return vec![
+                    vec![
                         Beam {
                             pos: new_pos,
                             dir: (0, 1),
@@ -134,19 +134,19 @@ impl Beam {
                             pos: new_pos,
                             dir: (0, -1),
                         },
-                    ];
+                    ]
                 }
             }
             Cell::SplitterV => {
                 if self.dir.1 == 0 {
                     // continue on
-                    return vec![Beam {
+                    vec![Beam {
                         pos: new_pos,
                         dir: self.dir,
-                    }];
+                    }]
                 } else {
                     // split
-                    return vec![
+                    vec![
                         Beam {
                             pos: new_pos,
                             dir: (1, 0),
@@ -155,7 +155,7 @@ impl Beam {
                             pos: new_pos,
                             dir: (-1, 0),
                         },
-                    ];
+                    ]
                 }
             }
         }
