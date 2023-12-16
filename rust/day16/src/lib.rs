@@ -1,9 +1,4 @@
-use std::{
-    collections::{HashSet, VecDeque},
-    fmt::Display,
-    str::FromStr,
-    vec,
-};
+use std::{collections::HashSet, fmt::Display, str::FromStr, vec};
 
 use aoc_traits::AdventOfCodeDay;
 
@@ -47,20 +42,25 @@ impl Display for Grid {
 impl Grid {
     fn energize(&self, starting_beam: Beam) -> u64 {
         // beams with current position, and direction
-        let mut beams = VecDeque::<Beam>::new();
+        let mut beams = Vec::<Beam>::new();
         // currently energized cells, with energizer directions
         let mut energized = HashSet::<Beam>::new();
-        beams.push_back(starting_beam);
+        beams.push(starting_beam);
         while !beams.is_empty() {
-            let beam = beams.pop_front().unwrap();
+            let beam = beams.pop().unwrap();
             if energized.contains(&beam) {
                 // already energized, ignore
                 continue;
             }
             // energize
-            let new_beams = beam.step(self);
+            let (beam1, beam2) = beam.step(self);
             energized.insert(beam);
-            beams.extend(new_beams);
+            if let Some(beam) = beam1 {
+                beams.push(beam);
+            }
+            if let Some(beam) = beam2 {
+                beams.push(beam);
+            }
         }
         // count distinct energized cells
         energized
@@ -79,83 +79,95 @@ struct Beam {
 }
 
 impl Beam {
-    fn step(&self, grid: &Grid) -> Vec<Beam> {
-        let new_pos = (
-            self.pos.0 + self.dir.0,
-            self.pos.1 + self.dir.1,
-        );
+    fn step(&self, grid: &Grid) -> (Option<Beam>, Option<Beam>) {
+        let new_pos = (self.pos.0 + self.dir.0, self.pos.1 + self.dir.1);
         // beam left the grid
         if new_pos.0 < 0
             || new_pos.1 < 0
             || new_pos.0 >= grid.dims.0 as isize
             || new_pos.1 >= grid.dims.1 as isize
         {
-            return vec![];
+            return (None, None);
         }
         let new_pos = (new_pos.0, new_pos.1);
 
         match grid.lines[new_pos.0 as usize][new_pos.1 as usize] {
             Cell::Empty => {
                 // continue on
-                vec![Beam {
-                    pos: new_pos,
-                    dir: self.dir,
-                }]
+                (
+                    Some(Beam {
+                        pos: new_pos,
+                        dir: self.dir,
+                    }),
+                    None,
+                )
             }
             Cell::Mirror1 => {
                 // reflect at \
-                vec![Beam {
-                    pos: new_pos,
-                    dir: (-self.dir.1, -self.dir.0),
-                }]
+                (
+                    Some(Beam {
+                        pos: new_pos,
+                        dir: (-self.dir.1, -self.dir.0),
+                    }),
+                    None,
+                )
             }
             Cell::Mirror2 => {
                 // reflect at /
-                vec![Beam {
-                    pos: new_pos,
-                    dir: (self.dir.1, self.dir.0),
-                }]
+                (
+                    Some(Beam {
+                        pos: new_pos,
+                        dir: (self.dir.1, self.dir.0),
+                    }),
+                    None,
+                )
             }
             Cell::SplitterH => {
                 if self.dir.0 == 0 {
                     // continue on
-                    vec![Beam {
-                        pos: new_pos,
-                        dir: self.dir,
-                    }]
+                    (
+                        Some(Beam {
+                            pos: new_pos,
+                            dir: self.dir,
+                        }),
+                        None,
+                    )
                 } else {
                     // split
-                    vec![
-                        Beam {
+                    (
+                        Some(Beam {
                             pos: new_pos,
                             dir: (0, 1),
-                        },
-                        Beam {
+                        }),
+                        Some(Beam {
                             pos: new_pos,
                             dir: (0, -1),
-                        },
-                    ]
+                        }),
+                    )
                 }
             }
             Cell::SplitterV => {
                 if self.dir.1 == 0 {
                     // continue on
-                    vec![Beam {
-                        pos: new_pos,
-                        dir: self.dir,
-                    }]
+                    (
+                        Some(Beam {
+                            pos: new_pos,
+                            dir: self.dir,
+                        }),
+                        None,
+                    )
                 } else {
                     // split
-                    vec![
-                        Beam {
+                    (
+                        Some(Beam {
                             pos: new_pos,
                             dir: (1, 0),
-                        },
-                        Beam {
+                        }),
+                        Some(Beam {
                             pos: new_pos,
                             dir: (-1, 0),
-                        },
-                    ]
+                        }),
+                    )
                 }
             }
         }
