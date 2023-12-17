@@ -1,6 +1,5 @@
 use std::{
-    cell::RefCell,
-    collections::{BinaryHeap, HashMap, HashSet},
+    collections::{BinaryHeap, HashMap},
     fmt::Display,
     rc::Rc,
     str::FromStr,
@@ -28,7 +27,7 @@ impl Display for Grid {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Node {
-    inner: Rc<RefCell<InnerNode>>,
+    inner: Rc<InnerNode>,
 }
 
 impl std::hash::Hash for Node {
@@ -56,25 +55,19 @@ impl PartialOrd for Container {
 impl Node {
     fn new(pos: (usize, usize), num_same_dir: (u8, u8, u8, u8)) -> Self {
         Node {
-            inner: Rc::new(RefCell::new(InnerNode {
-                pos,
-                num_same_dir,
-                neighbors: HashSet::new(),
-            })),
+            inner: Rc::new(InnerNode { pos, num_same_dir }),
         }
     }
 
     fn pos(&self) -> (usize, usize) {
-        self.inner.borrow().pos
+        self.inner.pos
     }
     fn num_same_dir(&self) -> (u8, u8, u8, u8) {
-        self.inner.borrow().num_same_dir
+        self.inner.num_same_dir
     }
 
-    fn gen_neighbors(&mut self, graph: &mut Graph, grid: &Grid) {
-        if !self.inner.borrow().neighbors.is_empty() {
-            return;
-        }
+    fn gen_neighbors(&self, graph: &mut Graph, grid: &Grid) -> Vec<Node> {
+        let mut neighbors = Vec::with_capacity(3);
         let pos = self.pos();
         let num_same_dir = self.num_same_dir();
         match num_same_dir {
@@ -82,30 +75,30 @@ impl Node {
                 // going up
                 if pos.0 > 0 && x < 3 {
                     if let Some(node) = graph.get(&(pos.0 - 1, pos.1, x + 1, 0, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 - 1, pos.1), (x + 1, 0, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 - 1, pos.1, x + 1, 0, 0, 0), node);
                     }
                 }
                 // going left
                 if pos.1 > 0 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 - 1, 0, 0, 1, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 - 1), (0, 0, 1, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 - 1, 0, 0, 1, 0), node);
                     }
                 }
                 // going right
                 if pos.1 < grid.dims.1 - 1 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 + 1, 0, 0, 0, 1)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 + 1), (0, 0, 0, 1));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 + 1, 0, 0, 0, 1), node);
                     }
                 }
@@ -114,30 +107,30 @@ impl Node {
                 // going down
                 if pos.0 < grid.dims.0 - 1 && x < 3 {
                     if let Some(node) = graph.get(&(pos.0 + 1, pos.1, 0, x + 1, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 + 1, pos.1), (0, x + 1, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 + 1, pos.1, 0, x + 1, 0, 0), node);
                     }
                 }
                 // going left
                 if pos.1 > 0 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 - 1, 0, 0, 1, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 - 1), (0, 0, 1, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 - 1, 0, 0, 1, 0), node);
                     }
                 }
                 // going right
                 if pos.1 < grid.dims.1 - 1 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 + 1, 0, 0, 0, 1)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 + 1), (0, 0, 0, 1));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 + 1, 0, 0, 0, 1), node);
                     }
                 }
@@ -146,30 +139,30 @@ impl Node {
                 // going left
                 if pos.1 > 0 && x < 3 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 - 1, 0, 0, x + 1, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 - 1), (0, 0, x + 1, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 - 1, 0, 0, x + 1, 0), node);
                     }
                 }
                 // going up
                 if pos.0 > 0 {
                     if let Some(node) = graph.get(&(pos.0 - 1, pos.1, 1, 0, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 - 1, pos.1), (1, 0, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 - 1, pos.1, 1, 0, 0, 0), node);
                     }
                 }
                 // going down
                 if pos.0 < grid.dims.0 - 1 {
                     if let Some(node) = graph.get(&(pos.0 + 1, pos.1, 0, 1, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 + 1, pos.1), (0, 1, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 + 1, pos.1, 0, 1, 0, 0), node);
                     }
                 }
@@ -178,30 +171,30 @@ impl Node {
                 // going right
                 if pos.1 < grid.dims.1 - 1 && x < 3 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 + 1, 0, 0, 0, x + 1)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 + 1), (0, 0, 0, x + 1));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 + 1, 0, 0, 0, x + 1), node);
                     }
                 }
                 // going up
                 if pos.0 > 0 {
                     if let Some(node) = graph.get(&(pos.0 - 1, pos.1, 1, 0, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 - 1, pos.1), (1, 0, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 - 1, pos.1, 1, 0, 0, 0), node);
                     }
                 }
                 // going down
                 if pos.0 < grid.dims.0 - 1 {
                     if let Some(node) = graph.get(&(pos.0 + 1, pos.1, 0, 1, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 + 1, pos.1), (0, 1, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 + 1, pos.1, 0, 1, 0, 0), node);
                     }
                 }
@@ -210,11 +203,11 @@ impl Node {
                 // the very first node
                 // go down
                 let node = Node::new((pos.0 + 1, pos.1), (0, 1, 0, 0));
-                self.inner.borrow_mut().neighbors.insert(node.clone());
+                neighbors.push(node.clone());
                 graph.insert((pos.0 + 1, pos.1, 0, 1, 0, 0), node);
                 // go right
                 let node = Node::new((pos.0, pos.1 + 1), (0, 0, 0, 1));
-                self.inner.borrow_mut().neighbors.insert(node.clone());
+                neighbors.push(node.clone());
                 graph.insert((pos.0, pos.1 + 1, 0, 0, 0, 1), node);
             }
             rest => {
@@ -222,12 +215,11 @@ impl Node {
                 panic!("unreachable?")
             }
         }
+        neighbors
     }
 
-    fn gen_neighbors2(&mut self, graph: &mut Graph, grid: &Grid) {
-        if !self.inner.borrow().neighbors.is_empty() {
-            return;
-        }
+    fn gen_neighbors2(&self, graph: &mut Graph, grid: &Grid) -> Vec<Node> {
+        let mut neighbors = Vec::with_capacity(3);
         let pos = self.pos();
         let num_same_dir = self.num_same_dir();
         match num_same_dir {
@@ -235,10 +227,10 @@ impl Node {
                 // going up
                 if pos.0 > 0 {
                     if let Some(node) = graph.get(&(pos.0 - 1, pos.1, x + 1, 0, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 - 1, pos.1), (x + 1, 0, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 - 1, pos.1, x + 1, 0, 0, 0), node);
                     }
                 }
@@ -247,30 +239,30 @@ impl Node {
                 // going up
                 if pos.0 > 0 && x < 10 {
                     if let Some(node) = graph.get(&(pos.0 - 1, pos.1, x + 1, 0, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 - 1, pos.1), (x + 1, 0, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 - 1, pos.1, x + 1, 0, 0, 0), node);
                     }
                 }
                 // going left
                 if pos.1 > 0 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 - 1, 0, 0, 1, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 - 1), (0, 0, 1, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 - 1, 0, 0, 1, 0), node);
                     }
                 }
                 // going right
                 if pos.1 < grid.dims.1 - 1 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 + 1, 0, 0, 0, 1)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 + 1), (0, 0, 0, 1));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 + 1, 0, 0, 0, 1), node);
                     }
                 }
@@ -279,10 +271,10 @@ impl Node {
                 // going down
                 if pos.0 < grid.dims.0 - 1 {
                     if let Some(node) = graph.get(&(pos.0 + 1, pos.1, 0, x + 1, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 + 1, pos.1), (0, x + 1, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 + 1, pos.1, 0, x + 1, 0, 0), node);
                     }
                 }
@@ -291,30 +283,30 @@ impl Node {
                 // going down
                 if pos.0 < grid.dims.0 - 1 && x < 10 {
                     if let Some(node) = graph.get(&(pos.0 + 1, pos.1, 0, x + 1, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 + 1, pos.1), (0, x + 1, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 + 1, pos.1, 0, x + 1, 0, 0), node);
                     }
                 }
                 // going left
                 if pos.1 > 0 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 - 1, 0, 0, 1, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 - 1), (0, 0, 1, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 - 1, 0, 0, 1, 0), node);
                     }
                 }
                 // going right
                 if pos.1 < grid.dims.1 - 1 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 + 1, 0, 0, 0, 1)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 + 1), (0, 0, 0, 1));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 + 1, 0, 0, 0, 1), node);
                     }
                 }
@@ -323,10 +315,10 @@ impl Node {
                 // going left
                 if pos.1 > 0 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 - 1, 0, 0, x + 1, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 - 1), (0, 0, x + 1, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 - 1, 0, 0, x + 1, 0), node);
                     }
                 }
@@ -335,30 +327,30 @@ impl Node {
                 // going left
                 if pos.1 > 0 && x < 10 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 - 1, 0, 0, x + 1, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 - 1), (0, 0, x + 1, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 - 1, 0, 0, x + 1, 0), node);
                     }
                 }
                 // going up
                 if pos.0 > 0 {
                     if let Some(node) = graph.get(&(pos.0 - 1, pos.1, 1, 0, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 - 1, pos.1), (1, 0, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 - 1, pos.1, 1, 0, 0, 0), node);
                     }
                 }
                 // going down
                 if pos.0 < grid.dims.0 - 1 {
                     if let Some(node) = graph.get(&(pos.0 + 1, pos.1, 0, 1, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 + 1, pos.1), (0, 1, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 + 1, pos.1, 0, 1, 0, 0), node);
                     }
                 }
@@ -367,10 +359,10 @@ impl Node {
                 // going right
                 if pos.1 < grid.dims.1 - 1 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 + 1, 0, 0, 0, x + 1)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 + 1), (0, 0, 0, x + 1));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 + 1, 0, 0, 0, x + 1), node);
                     }
                 }
@@ -379,30 +371,30 @@ impl Node {
                 // going right
                 if pos.1 < grid.dims.1 - 1 && x < 10 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 + 1, 0, 0, 0, x + 1)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0, pos.1 + 1), (0, 0, 0, x + 1));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0, pos.1 + 1, 0, 0, 0, x + 1), node);
                     }
                 }
                 // going up
                 if pos.0 > 0 {
                     if let Some(node) = graph.get(&(pos.0 - 1, pos.1, 1, 0, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 - 1, pos.1), (1, 0, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 - 1, pos.1, 1, 0, 0, 0), node);
                     }
                 }
                 // going down
                 if pos.0 < grid.dims.0 - 1 {
                     if let Some(node) = graph.get(&(pos.0 + 1, pos.1, 0, 1, 0, 0)) {
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                     } else {
                         let node = Node::new((pos.0 + 1, pos.1), (0, 1, 0, 0));
-                        self.inner.borrow_mut().neighbors.insert(node.clone());
+                        neighbors.push(node.clone());
                         graph.insert((pos.0 + 1, pos.1, 0, 1, 0, 0), node);
                     }
                 }
@@ -411,11 +403,11 @@ impl Node {
                 // the very first node
                 // go down
                 let node = Node::new((pos.0 + 1, pos.1), (0, 1, 0, 0));
-                self.inner.borrow_mut().neighbors.insert(node.clone());
+                neighbors.push(node.clone());
                 graph.insert((pos.0 + 1, pos.1, 0, 1, 0, 0), node);
                 // go right
                 let node = Node::new((pos.0, pos.1 + 1), (0, 0, 0, 1));
-                self.inner.borrow_mut().neighbors.insert(node.clone());
+                neighbors.push(node.clone());
                 graph.insert((pos.0, pos.1 + 1, 0, 0, 0, 1), node);
             }
             rest => {
@@ -423,6 +415,7 @@ impl Node {
                 panic!("unreachable?")
             }
         }
+        neighbors
     }
 }
 
@@ -433,7 +426,6 @@ struct InnerNode {
     pos: (usize, usize),
     // up, down, left, right
     num_same_dir: (u8, u8, u8, u8),
-    neighbors: HashSet<Node>,
 }
 
 impl Grid {
@@ -448,19 +440,14 @@ impl Grid {
             node: current.clone(),
         });
         dist.insert(current, 0);
-        while let Some(Container {
-            prio: p,
-            node: mut n,
-        }) = queue.pop()
-        {
+        while let Some(Container { prio: p, node: n }) = queue.pop() {
             if let Some(d) = dist.get(&n) {
                 if *d != p {
                     continue;
                 }
             }
-            n.gen_neighbors(&mut graph, self);
-            let inner = n.inner.borrow();
-            for neighbor in inner.neighbors.iter() {
+            let neighbors = n.gen_neighbors(&mut graph, self);
+            for neighbor in neighbors.iter() {
                 {
                     let pos = neighbor.pos();
                     let new_distance = p + self.lines[pos.0][pos.1];
@@ -493,19 +480,14 @@ impl Grid {
             node: current.clone(),
         });
         dist.insert(current, 0);
-        while let Some(Container {
-            prio: p,
-            node: mut n,
-        }) = queue.pop()
-        {
+        while let Some(Container { prio: p, node: n }) = queue.pop() {
             if let Some(d) = dist.get(&n) {
                 if *d != p {
                     continue;
                 }
             }
-            n.gen_neighbors2(&mut graph, self);
-            let inner = n.inner.borrow();
-            for neighbor in inner.neighbors.iter() {
+            let neighbors = n.gen_neighbors2(&mut graph, self);
+            for neighbor in neighbors.iter() {
                 {
                     let pos = neighbor.pos();
                     let new_distance = p + self.lines[pos.0][pos.1];
