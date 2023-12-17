@@ -49,7 +49,7 @@ impl Ord for Container {
 }
 impl PartialOrd for Container {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -231,7 +231,7 @@ impl Node {
         let pos = self.pos();
         let num_same_dir = self.num_same_dir();
         match num_same_dir {
-            (x, 0, 0, 0) if x >= 1 && x < 4 => {
+            (x, 0, 0, 0) if (1..4).contains(&x) => {
                 // going up
                 if pos.0 > 0 {
                     if let Some(node) = graph.get(&(pos.0 - 1, pos.1, x + 1, 0, 0, 0)) {
@@ -275,7 +275,7 @@ impl Node {
                     }
                 }
             }
-            (0, x, 0, 0) if x >= 1 && x < 4 => {
+            (0, x, 0, 0) if (1..4).contains(&x) => {
                 // going down
                 if pos.0 < grid.dims.0 - 1 {
                     if let Some(node) = graph.get(&(pos.0 + 1, pos.1, 0, x + 1, 0, 0)) {
@@ -319,7 +319,7 @@ impl Node {
                     }
                 }
             }
-            (0, 0, x, 0) if x >= 1 && x < 4 => {
+            (0, 0, x, 0) if (1..4).contains(&x) => {
                 // going left
                 if pos.1 > 0 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 - 1, 0, 0, x + 1, 0)) {
@@ -363,7 +363,7 @@ impl Node {
                     }
                 }
             }
-            (0, 0, 0, x) if x >= 1 && x < 4 => {
+            (0, 0, 0, x) if (1..4).contains(&x) => {
                 // going right
                 if pos.1 < grid.dims.1 - 1 {
                     if let Some(node) = graph.get(&(pos.0, pos.1 + 1, 0, 0, 0, x + 1)) {

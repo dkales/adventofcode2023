@@ -46,8 +46,8 @@ impl Grid {
         // currently energized cells, with energizer directions
         let mut energized = HashSet::<Beam>::new();
         beams.push(starting_beam);
-        while !beams.is_empty() {
-            let beam = beams.pop().unwrap();
+        while let Some(beam) = beams.pop() {
+            
             if energized.contains(&beam) {
                 // already energized, ignore
                 continue;

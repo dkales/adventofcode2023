@@ -57,8 +57,7 @@ impl Grid {
                 // found 1 mirror point, now check if it's a full mirror
                 let mut already_smudged = self.lines[i] != self.lines[i - 1];
                 for (x, y) in (0..i - 1).rev().zip(i + 1..self.dim.1) {
-                    if (self.lines[x] ^ self.lines[y]).count_ones() == 1 && already_smudged == false
-                    {
+                    if (self.lines[x] ^ self.lines[y]).count_ones() == 1 && !already_smudged {
                         already_smudged = true;
                     } else if self.lines[x] != self.lines[y] {
                         continue 'outer;
@@ -80,6 +79,7 @@ impl Grid {
     }
     fn transpose(&self) -> Grid {
         let mut lines = vec![0; self.dim.0];
+        #[allow(clippy::needless_range_loop)]
         for i in 0..self.dim.0 {
             for j in 0..self.dim.1 {
                 lines[i] |= ((self.lines[j] >> (self.dim.0 - i - 1)) & 1) << (self.dim.1 - 1 - j);
