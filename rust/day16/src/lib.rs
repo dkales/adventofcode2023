@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt::Display, str::FromStr, vec};
+use std::{collections::HashSet, fmt::Display, str::FromStr};
 
 use aoc_traits::AdventOfCodeDay;
 
@@ -235,7 +235,7 @@ fn solve_stage2(input: &Grid) -> u64 {
             }),
         )
         .chain(
-            // starting from the left
+            // starting from the right
             (0..input.dims.0).map(|x| {
                 input.energize(Beam {
                     pos: (x as isize, input.dims.1 as isize),
