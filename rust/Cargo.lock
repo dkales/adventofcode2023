@@ -355,6 +355,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "day17"
+version = "0.1.0"
+dependencies = [
+ "aoc-traits",
+ "color-eyre",
+ "nom",
+]
+
+[[package]]
 name = "either"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -438,6 +447,7 @@ dependencies = [
  "day14",
  "day15",
  "day16",
+ "day17",
 ]
 
 [[package]]
