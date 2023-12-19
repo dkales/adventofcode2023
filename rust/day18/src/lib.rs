@@ -42,8 +42,7 @@ impl FromStr for Input {
             .map(|x| {
                 let mut parts = x.split(' ');
                 let dir = parts.next().unwrap().chars().next().unwrap();
-                let mut coords = parts.next().unwrap().split(',');
-                let y = coords.next().unwrap().parse().unwrap();
+                let y = parts.next().unwrap().parse().unwrap();
                 BuildInstruction { dir, y }
             })
             .collect();
@@ -270,12 +269,22 @@ fn solve(input: &BuildInstructions) -> u64 {
             }
         }
     }
+    // println!("{:?}", small_dims);
+    // println!("{:?}", x_sizes);
+    // println!("{:?}", y_sizes);
+    // println!(
+    //     "{}",
+    //     Grid {
+    //         lines: grid.clone(),
+    //         dims: small_dims
+    //     }
+    // );
 
-    let mut sum = 0;
+    let mut sum = x_sizes.iter().sum::<usize>() * y_sizes.iter().sum::<usize>();
     for x in 0..small_dims.0 {
         for y in 0..small_dims.1 {
-            if grid[x][y] != 2 {
-                sum += x_sizes[x] * y_sizes[y];
+            if grid[x][y] == 2 {
+                sum -= x_sizes[x] * y_sizes[y];
             }
         }
     }
