@@ -192,12 +192,20 @@ fn solve(input: &BuildInstructions) -> u64 {
         acc += size;
         start.0 += 1;
     }
+    // fix zero size cells
+    if x_sizes[start.0] == 0 {
+        start.0 += 1;
+    }
     let mut acc = 0;
     for size in y_sizes.iter() {
         if acc == input.offset.1 {
             break;
         }
         acc += size;
+        start.1 += 1;
+    }
+    // fix zero size cells
+    if y_sizes[start.1] == 0 {
         start.1 += 1;
     }
     let mut cur = start;
