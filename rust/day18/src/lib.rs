@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop)]
 use std::{collections::VecDeque, fmt::Display, str::FromStr};
 
 use aoc_traits::AdventOfCodeDay;
@@ -140,56 +141,120 @@ struct BuildInstruction {
 }
 
 fn solve(input: &BuildInstructions) -> u64 {
-    println!("{:?}", input.dims);
-    let mut grid = Grid {
-        lines: vec![vec![0; input.dims.1]; input.dims.0],
-        dims: input.dims,
-    };
     let mut cur = input.offset;
-    grid.lines[cur.0][cur.1] = 1;
+    let mut x_points = Vec::new();
+    let mut y_points = Vec::new();
+    for inst in &input.instr {
+        if !x_points.contains(&cur.0) {
+            x_points.push(cur.0);
+        }
+        if !y_points.contains(&cur.1) {
+            y_points.push(cur.1);
+        }
+        match inst.dir {
+            'U' => {
+                cur.0 -= inst.y;
+            }
+            'D' => {
+                cur.0 += inst.y;
+            }
+            'L' => {
+                cur.1 -= inst.y;
+            }
+            'R' => {
+                cur.1 += inst.y;
+            }
+            _ => unreachable!(),
+        }
+    }
+    x_points.sort();
+    y_points.sort();
+
+    let mut x_sizes = vec![1];
+    let mut y_sizes = vec![1];
+    for x in x_points.windows(2) {
+        x_sizes.push(x[1] - x[0] - 1);
+        x_sizes.push(1);
+    }
+    for y in y_points.windows(2) {
+        y_sizes.push(y[1] - y[0] - 1);
+        y_sizes.push(1);
+    }
+    let small_dims = (x_sizes.len(), y_sizes.len());
+    let mut grid = vec![vec![0; small_dims.1]; small_dims.0];
+
+    //find mapped starting point
+    let mut start = (0, 0);
+    let mut acc = 0;
+    for size in x_sizes.iter() {
+        if acc == input.offset.0 {
+            break;
+        }
+        acc += size;
+        start.0 += 1;
+    }
+    let mut acc = 0;
+    for size in y_sizes.iter() {
+        if acc == input.offset.1 {
+            break;
+        }
+        acc += size;
+        start.1 += 1;
+    }
+    let mut cur = start;
+    grid[cur.0][cur.1] = 1;
     for inst in &input.instr {
         match inst.dir {
             'U' => {
-                for _ in 0..inst.y {
+                let mut step = inst.y;
+                while step != 0 {
                     cur.0 -= 1;
-                    grid.lines[cur.0][cur.1] = 1;
+                    grid[cur.0][cur.1] = 1;
+                    step -= x_sizes[cur.0];
                 }
             }
             'D' => {
-                for _ in 0..inst.y {
+                let mut step = inst.y;
+                while step != 0 {
                     cur.0 += 1;
-                    grid.lines[cur.0][cur.1] = 1;
+                    grid[cur.0][cur.1] = 1;
+                    step -= x_sizes[cur.0];
                 }
             }
             'L' => {
-                for _ in 0..inst.y {
+                let mut step = inst.y;
+                while step != 0 {
                     cur.1 -= 1;
-                    grid.lines[cur.0][cur.1] = 1;
+                    grid[cur.0][cur.1] = 1;
+                    step -= y_sizes[cur.1];
                 }
             }
             'R' => {
-                for _ in 0..inst.y {
+                let mut step = inst.y;
+                while step != 0 {
                     cur.1 += 1;
-                    grid.lines[cur.0][cur.1] = 1;
+                    grid[cur.0][cur.1] = 1;
+                    step -= y_sizes[cur.1];
                 }
             }
             _ => unreachable!(),
         }
     }
-    let mut queue = VecDeque::with_capacity((input.dims.0 + input.dims.1) * 2);
-    for i in 0..input.dims.0 {
+
+    let mut queue = VecDeque::with_capacity((small_dims.0 + small_dims.1) * 2);
+    for i in 0..small_dims.0 {
         queue.push_back((i, 0));
-        queue.push_back((i, input.dims.1 - 1));
+        queue.push_back((i, small_dims.1 - 1));
     }
-    for j in 0..input.dims.1 {
+    for j in 0..small_dims.1 {
         queue.push_back((0, j));
-        queue.push_back((input.dims.0 - 1, j));
+        queue.push_back((small_dims.0 - 1, j));
     }
 
     while let Some(point) = queue.pop_front() {
-        if grid.lines[point.0][point.1] == 0 {
+        if grid[point.0][point.1] == 0 {
             //mark outside
-            grid.lines[point.0][point.1] = 2;
+            grid[point.0][point.1] = 2;
             // add neighbors to queue
             if point.0 > 0 {
                 queue.push_back((point.0 - 1, point.1));
@@ -197,16 +262,24 @@ fn solve(input: &BuildInstructions) -> u64 {
             if point.1 > 0 {
                 queue.push_back((point.0, point.1 - 1));
             }
-            if point.0 < input.dims.0 - 1 {
+            if point.0 < small_dims.0 - 1 {
                 queue.push_back((point.0 + 1, point.1));
             }
-            if point.1 < input.dims.1 - 1 {
+            if point.1 < small_dims.1 - 1 {
                 queue.push_back((point.0, point.1 + 1));
             }
         }
     }
 
-    grid.lines.iter().flatten().filter(|x| **x != 2).count() as u64
+    let mut sum = 0;
+    for x in 0..small_dims.0 {
+        for y in 0..small_dims.1 {
+            if grid[x][y] != 2 {
+                sum += x_sizes[x] * y_sizes[y];
+            }
+        }
+    }
+    sum as u64
 }
 
 fn solve_stage1(input: &Input) -> u64 {
