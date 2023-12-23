@@ -1,0 +1,355 @@
+use std::{
+    collections::{HashMap, VecDeque},
+    vec,
+};
+
+use aoc_traits::AdventOfCodeDay;
+use color_eyre::{
+    eyre::{self},
+    Result,
+};
+use nom::{
+    bytes::complete::tag,
+    character::complete::{alpha1, line_ending},
+    combinator::map,
+    multi::separated_list1,
+    sequence::terminated,
+    IResult,
+};
+use num_integer::Integer;
+
+#[derive(Debug, Clone)]
+pub struct State {
+    gates: HashMap<u32, Gate>,
+}
+
+impl State {
+    fn press_button(&self, to_search_low: u32) -> (State, (u64, u64), bool) {
+        let mut new_state = self.clone();
+        let (mut lows, mut highs) = (0, 0);
+        let mut queue = VecDeque::new();
+        let mut hit_search_with_low = false;
+        queue.push_back((0, 0, false));
+        while let Some((sender, target, pulse)) = queue.pop_front() {
+            if pulse {
+                highs += 1;
+            } else {
+                if target == to_search_low {
+                    hit_search_with_low = true;
+                }
+                lows += 1;
+            }
+            let gate = new_state.gates.get_mut(&target);
+            match gate {
+                Some(Gate {
+                    gate_type: GateType::FlipFlop { state },
+                    outputs,
+                    ..
+                }) => {
+                    if pulse {
+                        continue;
+                    }
+                    *state = !*state;
+                    for output in outputs.iter() {
+                        queue.push_back((target, *output, *state));
+                    }
+                }
+                Some(Gate {
+                    gate_type: GateType::Conjunction { input_states },
+                    outputs,
+                    ..
+                }) => {
+                    assert!(input_states.insert(sender, pulse).is_some()); // we don't get new signals
+                    let new_pulse = input_states.values().all(|x| *x);
+                    for output in outputs.iter() {
+                        queue.push_back((target, *output, !new_pulse));
+                    }
+                }
+                Some(Gate {
+                    gate_type: GateType::Broadcaster,
+                    outputs,
+                    ..
+                }) => {
+                    for output in outputs.iter() {
+                        queue.push_back((target, *output, pulse));
+                    }
+                }
+                None => {
+                    //println!("Hit noop-gate {}", target);
+                }
+            }
+        }
+        (new_state, (lows, highs), hit_search_with_low)
+    }
+
+    // find off_time, on_time cycle for flip flop
+    fn find_cycle_of_flip_flop(&self, target: u32) -> (u64, u64) {
+        assert!(matches!(
+            self.gates.get(&target),
+            Some(Gate {
+                gate_type: GateType::FlipFlop { .. },
+                ..
+            }),
+        ));
+
+        // first, find all inputs for this flip flop
+        let inputs: Vec<_> = self
+            .gates
+            .iter()
+            .filter(|(_, gate)| gate.outputs.contains(&target))
+            .map(|(id, _)| *id)
+            .collect();
+        let mut cycles = vec![];
+        for input in inputs {
+            match self.gates.get(&input).unwrap() {
+                Gate {
+                    gate_type: GateType::FlipFlop { .. },
+                    ..
+                } => {
+                    let cycle = self.find_cycle_of_flip_flop(input);
+                    cycles.push(cycle);
+                }
+                Gate {
+                    gate_type: GateType::Conjunction { .. },
+                    ..
+                } => {
+                    let cycle = self.find_cycle_of_conjunction(input);
+                    cycles.push(cycle);
+                }
+                Gate {
+                    gate_type: GateType::Broadcaster,
+                    ..
+                } => {
+                    cycles.push((1, 1));
+                }
+            }
+        }
+        println!("cycles: {:?}", cycles);
+        (0, 0)
+    }
+
+    // find offset & cycle for conjunction
+    fn find_cycle_of_conjunction(&self, target: u32) -> (u64, u64) {
+        assert!(matches!(
+            self.gates.get(&target),
+            Some(Gate {
+                gate_type: GateType::Conjunction { .. },
+                ..
+            }),
+        ));
+
+        if let Some(Gate {
+            gate_type: GateType::Conjunction { input_states },
+            ..
+        }) = self.gates.get(&target)
+        {
+            let mut cycles = Vec::with_capacity(input_states.len());
+            for gate in input_states.keys() {
+                match self.gates.get(gate).unwrap() {
+                    Gate {
+                        gate_type: GateType::FlipFlop { .. },
+                        ..
+                    } => {
+                        let cycle = self.find_cycle_of_flip_flop(*gate);
+                        cycles.push(cycle);
+                    }
+                    Gate {
+                        gate_type: GateType::Conjunction { .. },
+                        ..
+                    } => {
+                        let cycle = self.find_cycle_of_conjunction(*gate);
+                        cycles.push(cycle);
+                    }
+                    Gate {
+                        gate_type: GateType::Broadcaster,
+                        ..
+                    } => {
+                        panic!("Broadcaster in conjunction")
+                    }
+                }
+            }
+            let c = cycles.iter().fold(1, |acc, x| acc.lcm(&x.1));
+            (c, c)
+        } else {
+            unreachable!()
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum GateType {
+    FlipFlop { state: bool },
+    Conjunction { input_states: HashMap<u32, bool> },
+    Broadcaster,
+}
+
+#[derive(Debug, Clone)]
+struct Gate {
+    id: u32,
+    gate_type: GateType,
+    outputs: Vec<u32>,
+    inputs: Vec<u32>,
+}
+
+fn name_to_id(name: &str) -> u32 {
+    if name == "broadcaster" {
+        return 0;
+    }
+    name.chars()
+        .fold(0, |acc, c| acc * 26 + (c as u32 - 'A' as u32))
+}
+
+fn parse_gate(input: &str) -> IResult<&str, Gate> {
+    let (gate_type, offset) = match input.as_bytes()[0] {
+        b'%' => (GateType::FlipFlop { state: false }, 1),
+        b'&' => (
+            GateType::Conjunction {
+                input_states: HashMap::new(),
+            },
+            1,
+        ),
+        b'b' => (GateType::Broadcaster, 0),
+        _ => unreachable!(),
+    };
+    let input = &input[offset..];
+    let (input, id) = terminated(map(alpha1, name_to_id), tag(" -> "))(input)?;
+    let (input, outputs) = separated_list1(tag(", "), map(alpha1, name_to_id))(input)?;
+    let gate = Gate {
+        id,
+        gate_type,
+        outputs,
+        inputs: vec![],
+    };
+    Ok((input, gate))
+}
+
+fn parse_game(input: &str) -> IResult<&str, State> {
+    let (input, gates) = separated_list1(line_ending, parse_gate)(input)?;
+    let mut gate_map: HashMap<u32, Gate> = gates.clone().into_iter().map(|x| (x.id, x)).collect();
+
+    for gate in gates {
+        for output in gate.outputs {
+            if let Some(g) = gate_map.get_mut(&output) {
+                g.inputs.push(gate.id);
+                match g.gate_type {
+                    GateType::Conjunction {
+                        ref mut input_states,
+                    } => {
+                        input_states.insert(gate.id, false);
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    Ok((input, State { gates: gate_map }))
+}
+
+fn parse(input: &str) -> Result<State> {
+    parse_game(input)
+        .map_err(|e| eyre::eyre!("Failed to parse input: {}", e))
+        .map(|x| x.1)
+}
+
+fn solve_stage1(input: &State) -> u64 {
+    let mut lows = 0;
+    let mut highs = 0;
+    let mut game_state = input.clone();
+
+    for _ in 0..1000 {
+        let (new_state, (new_lows, new_highs), _) = game_state.press_button(0);
+        game_state = new_state;
+        lows += new_lows;
+        highs += new_highs;
+    }
+
+    lows * highs
+}
+
+fn solve_stage2_old(input: &State) -> u64 {
+    let mut count = 0;
+    let mut game_state = input.clone();
+
+    loop {
+        count += 1;
+        let (new_state, _, hit) = game_state.press_button(name_to_id("rx"));
+        if hit {
+            break;
+        }
+        game_state = new_state;
+    }
+
+    count
+}
+fn solve_stage2(input: &State) -> u64 {
+    let target = name_to_id("rx");
+    //dbg!(&input.gates);
+
+    for gate in input.gates.values() {
+        if gate.id != 0 {
+            continue;
+        }
+        for g in &gate.outputs {
+            let gg = input.gates.get(g).unwrap();
+            dbg!(&gg);
+            for ggg in &gg.outputs {
+                let gggg = input.gates.get(ggg).unwrap();
+                dbg!(gggg);
+            }
+        }
+    }
+
+    0
+}
+
+pub struct Day20Solver;
+impl AdventOfCodeDay<'_> for Day20Solver {
+    type ParsedInput = State;
+
+    type Part1Output = u64;
+
+    type Part2Output = u64;
+
+    fn solve_part1(input: &Self::ParsedInput) -> Self::Part1Output {
+        solve_stage1(input)
+    }
+
+    fn solve_part2(input: &Self::ParsedInput) -> Self::Part2Output {
+        solve_stage2(input)
+    }
+
+    fn parse_input(input: &'_ str) -> Self::ParsedInput {
+        parse(input).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    const TEST_INPUT: &str = r#"broadcaster -> a, b, c
+%a -> b
+%b -> c
+%c -> inv
+&inv -> a"#;
+    const TEST_INPUT2: &str = r#"broadcaster -> a
+%a -> inv, con
+&inv -> b
+%b -> con
+&con -> output"#;
+    #[test]
+    fn test_stage1() {
+        let input = super::parse(TEST_INPUT).unwrap();
+        assert_eq!(super::solve_stage1(&input), 32000000);
+    }
+    #[test]
+    fn test_stage1_2() {
+        let input = super::parse(TEST_INPUT2).unwrap();
+        assert_eq!(super::solve_stage1(&input), 11687500);
+    }
+    #[test]
+    fn test_stage2() {
+        let input = super::parse(TEST_INPUT).unwrap();
+        assert_eq!(super::solve_stage2(&input), 71503);
+    }
+}
