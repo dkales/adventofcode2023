@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use aoc_traits::AdventOfCodeDay;
-use color_eyre::owo_colors::colors::xterm::Jade;
 use nom::{
     bytes::complete::tag,
     character::complete::{digit1, space0},
