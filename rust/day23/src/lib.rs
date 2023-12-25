@@ -36,51 +36,43 @@ impl Grid {
             [Some(x), None, None, None]
             | [None, Some(x), None, None]
             | [None, None, Some(x), None]
-            | [None, None, None, Some(x)] => {
-                return self.walk_inner(x, vist, len + 1);
-            }
+            | [None, None, None, Some(x)] => self.walk_inner(x, vist, len + 1),
             rest => {
                 let mut max = 0;
-                for x in rest {
-                    if let Some(pos) = x {
-                        let mut v_clone = vist.clone();
-                        max = max.max(self.walk_inner(pos, &mut v_clone, len + 1));
-                    }
+                for pos in rest.into_iter().flatten() {
+                    let mut v_clone = vist.clone();
+                    max = max.max(self.walk_inner(pos, &mut v_clone, len + 1));
                 }
-                return max;
+                max
             }
         }
     }
     fn get_neighbor(&self, pos: (usize, usize), dist: &[Vec<bool>]) -> [Option<(usize, usize)>; 4] {
         let mut res = [None, None, None, None];
 
-        if pos.0 > 0 {
-            if !dist[pos.0 - 1][pos.1]
-                && !matches!(self.lines[pos.0 - 1][pos.1], Cell::Wall | Cell::Down)
-            {
-                res[0] = Some((pos.0 - 1, pos.1))
-            }
+        if pos.0 > 0
+            && !dist[pos.0 - 1][pos.1]
+            && !matches!(self.lines[pos.0 - 1][pos.1], Cell::Wall | Cell::Down)
+        {
+            res[0] = Some((pos.0 - 1, pos.1))
         }
-        if pos.1 > 0 {
-            if !dist[pos.0][pos.1 - 1]
-                && !matches!(self.lines[pos.0][pos.1 - 1], Cell::Wall | Cell::Right)
-            {
-                res[1] = Some((pos.0, pos.1 - 1))
-            }
+        if pos.1 > 0
+            && !dist[pos.0][pos.1 - 1]
+            && !matches!(self.lines[pos.0][pos.1 - 1], Cell::Wall | Cell::Right)
+        {
+            res[1] = Some((pos.0, pos.1 - 1))
         }
-        if pos.0 < self.dims.0 - 1 {
-            if !dist[pos.0 + 1][pos.1]
-                && !matches!(self.lines[pos.0 + 1][pos.1], Cell::Wall | Cell::Up)
-            {
-                res[2] = Some((pos.0 + 1, pos.1))
-            }
+        if pos.0 < self.dims.0 - 1
+            && !dist[pos.0 + 1][pos.1]
+            && !matches!(self.lines[pos.0 + 1][pos.1], Cell::Wall | Cell::Up)
+        {
+            res[2] = Some((pos.0 + 1, pos.1))
         }
-        if pos.1 < self.dims.1 {
-            if !dist[pos.0][pos.1 + 1]
-                && !matches!(self.lines[pos.0][pos.1 + 1], Cell::Wall | Cell::Left)
-            {
-                res[3] = Some((pos.0, pos.1 + 1))
-            }
+        if pos.1 < self.dims.1
+            && !dist[pos.0][pos.1 + 1]
+            && !matches!(self.lines[pos.0][pos.1 + 1], Cell::Wall | Cell::Left)
+        {
+            res[3] = Some((pos.0, pos.1 + 1))
         }
 
         res
@@ -102,18 +94,14 @@ impl Grid {
             [Some(x), None, None, None]
             | [None, Some(x), None, None]
             | [None, None, Some(x), None]
-            | [None, None, None, Some(x)] => {
-                return self.walk_inner2(x, vist, len + 1);
-            }
+            | [None, None, None, Some(x)] => self.walk_inner2(x, vist, len + 1),
             rest => {
                 let mut max = 0;
-                for x in rest {
-                    if let Some(pos) = x {
-                        let mut v_clone = vist.clone();
-                        max = max.max(self.walk_inner2(pos, &mut v_clone, len + 1));
-                    }
+                for pos in rest.into_iter().flatten() {
+                    let mut v_clone = vist.clone();
+                    max = max.max(self.walk_inner2(pos, &mut v_clone, len + 1));
                 }
-                return max;
+                max
             }
         }
     }
@@ -124,25 +112,29 @@ impl Grid {
     ) -> [Option<(usize, usize)>; 4] {
         let mut res = [None, None, None, None];
 
-        if pos.0 > 0 {
-            if !dist[pos.0 - 1][pos.1] && !matches!(self.lines[pos.0 - 1][pos.1], Cell::Wall) {
-                res[0] = Some((pos.0 - 1, pos.1))
-            }
+        if pos.0 > 0
+            && !dist[pos.0 - 1][pos.1]
+            && !matches!(self.lines[pos.0 - 1][pos.1], Cell::Wall)
+        {
+            res[0] = Some((pos.0 - 1, pos.1))
         }
-        if pos.1 > 0 {
-            if !dist[pos.0][pos.1 - 1] && !matches!(self.lines[pos.0][pos.1 - 1], Cell::Wall) {
-                res[1] = Some((pos.0, pos.1 - 1))
-            }
+        if pos.1 > 0
+            && !dist[pos.0][pos.1 - 1]
+            && !matches!(self.lines[pos.0][pos.1 - 1], Cell::Wall)
+        {
+            res[1] = Some((pos.0, pos.1 - 1))
         }
-        if pos.0 < self.dims.0 - 1 {
-            if !dist[pos.0 + 1][pos.1] && !matches!(self.lines[pos.0 + 1][pos.1], Cell::Wall) {
-                res[2] = Some((pos.0 + 1, pos.1))
-            }
+        if pos.0 < self.dims.0 - 1
+            && !dist[pos.0 + 1][pos.1]
+            && !matches!(self.lines[pos.0 + 1][pos.1], Cell::Wall)
+        {
+            res[2] = Some((pos.0 + 1, pos.1))
         }
-        if pos.1 < self.dims.1 {
-            if !dist[pos.0][pos.1 + 1] && !matches!(self.lines[pos.0][pos.1 + 1], Cell::Wall) {
-                res[3] = Some((pos.0, pos.1 + 1))
-            }
+        if pos.1 < self.dims.1
+            && !dist[pos.0][pos.1 + 1]
+            && !matches!(self.lines[pos.0][pos.1 + 1], Cell::Wall)
+        {
+            res[3] = Some((pos.0, pos.1 + 1))
         }
 
         res
