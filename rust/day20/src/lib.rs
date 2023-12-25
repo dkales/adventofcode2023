@@ -24,20 +24,20 @@ pub struct State {
 }
 
 impl State {
-    fn press_button(&self, to_search_low: u32) -> (State, (u64, u64), bool) {
+    fn press_button(&self, to_search: (u32, u32, bool)) -> (State, (u64, u64), bool) {
         let mut new_state = self.clone();
         let (mut lows, mut highs) = (0, 0);
         let mut queue = VecDeque::new();
-        let mut hit_search_with_low = false;
+        let mut hit_search = false;
         queue.push_back((0, 0, false));
         while let Some((sender, target, pulse)) = queue.pop_front() {
             if pulse {
                 highs += 1;
             } else {
-                if target == to_search_low {
-                    hit_search_with_low = true;
-                }
                 lows += 1;
+            }
+            if sender == to_search.0 && target == to_search.1 && pulse == to_search.2 {
+                hit_search = true;
             }
             let gate = new_state.gates.get_mut(&target);
             match gate {
@@ -79,100 +79,7 @@ impl State {
                 }
             }
         }
-        (new_state, (lows, highs), hit_search_with_low)
-    }
-
-    // find off_time, on_time cycle for flip flop
-    fn find_cycle_of_flip_flop(&self, target: u32) -> (u64, u64) {
-        assert!(matches!(
-            self.gates.get(&target),
-            Some(Gate {
-                gate_type: GateType::FlipFlop { .. },
-                ..
-            }),
-        ));
-
-        // first, find all inputs for this flip flop
-        let inputs: Vec<_> = self
-            .gates
-            .iter()
-            .filter(|(_, gate)| gate.outputs.contains(&target))
-            .map(|(id, _)| *id)
-            .collect();
-        let mut cycles = vec![];
-        for input in inputs {
-            match self.gates.get(&input).unwrap() {
-                Gate {
-                    gate_type: GateType::FlipFlop { .. },
-                    ..
-                } => {
-                    let cycle = self.find_cycle_of_flip_flop(input);
-                    cycles.push(cycle);
-                }
-                Gate {
-                    gate_type: GateType::Conjunction { .. },
-                    ..
-                } => {
-                    let cycle = self.find_cycle_of_conjunction(input);
-                    cycles.push(cycle);
-                }
-                Gate {
-                    gate_type: GateType::Broadcaster,
-                    ..
-                } => {
-                    cycles.push((1, 1));
-                }
-            }
-        }
-        println!("cycles: {:?}", cycles);
-        (0, 0)
-    }
-
-    // find offset & cycle for conjunction
-    fn find_cycle_of_conjunction(&self, target: u32) -> (u64, u64) {
-        assert!(matches!(
-            self.gates.get(&target),
-            Some(Gate {
-                gate_type: GateType::Conjunction { .. },
-                ..
-            }),
-        ));
-
-        if let Some(Gate {
-            gate_type: GateType::Conjunction { input_states },
-            ..
-        }) = self.gates.get(&target)
-        {
-            let mut cycles = Vec::with_capacity(input_states.len());
-            for gate in input_states.keys() {
-                match self.gates.get(gate).unwrap() {
-                    Gate {
-                        gate_type: GateType::FlipFlop { .. },
-                        ..
-                    } => {
-                        let cycle = self.find_cycle_of_flip_flop(*gate);
-                        cycles.push(cycle);
-                    }
-                    Gate {
-                        gate_type: GateType::Conjunction { .. },
-                        ..
-                    } => {
-                        let cycle = self.find_cycle_of_conjunction(*gate);
-                        cycles.push(cycle);
-                    }
-                    Gate {
-                        gate_type: GateType::Broadcaster,
-                        ..
-                    } => {
-                        panic!("Broadcaster in conjunction")
-                    }
-                }
-            }
-            let c = cycles.iter().fold(1, |acc, x| acc.lcm(&x.1));
-            (c, c)
-        } else {
-            unreachable!()
-        }
+        (new_state, (lows, highs), hit_search)
     }
 }
 
@@ -223,6 +130,28 @@ fn parse_gate(input: &str) -> IResult<&str, Gate> {
     Ok((input, gate))
 }
 
+fn find_hits(input: &State, to_search: (u32, u32, bool)) -> Option<usize> {
+    let mut game_state = input.clone();
+    let mut res = vec![];
+    for i in 1..100000 {
+        let (new_state, _, hit) = game_state.press_button(to_search);
+        game_state = new_state;
+        if hit {
+            res.push(i);
+            if res.len() > 3
+                && res[res.len() - 1] - res[res.len() - 2]
+                    == res[res.len() - 2] - res[res.len() - 3]
+                && res[res.len() - 2] - res[res.len() - 3]
+                    == res[res.len() - 3] - res[res.len() - 4]
+            {
+                return Some(res[res.len() - 1] - res[res.len() - 2]);
+            }
+        }
+    }
+
+    None
+}
+
 fn parse_game(input: &str) -> IResult<&str, State> {
     let (input, gates) = separated_list1(line_ending, parse_gate)(input)?;
     let mut gate_map: HashMap<u32, Gate> = gates.clone().into_iter().map(|x| (x.id, x)).collect();
@@ -258,7 +187,7 @@ fn solve_stage1(input: &State) -> u64 {
     let mut game_state = input.clone();
 
     for _ in 0..1000 {
-        let (new_state, (new_lows, new_highs), _) = game_state.press_button(0);
+        let (new_state, (new_lows, new_highs), _) = game_state.press_button((0, 0, false));
         game_state = new_state;
         lows += new_lows;
         highs += new_highs;
@@ -267,36 +196,21 @@ fn solve_stage1(input: &State) -> u64 {
     lows * highs
 }
 
-fn solve_stage2_old(input: &State) -> u64 {
-    let mut count = 0;
-    let mut game_state = input.clone();
-
-    loop {
-        count += 1;
-        let (new_state, _, hit) = game_state.press_button(name_to_id("rx"));
-        if hit {
-            break;
-        }
-        game_state = new_state;
-    }
-
-    count
-}
 fn solve_stage2(input: &State) -> u64 {
     let target = name_to_id("rx");
     //dbg!(&input.gates);
 
     for gate in input.gates.values() {
-        if gate.id != 0 {
-            continue;
-        }
-        for g in &gate.outputs {
-            let gg = input.gates.get(g).unwrap();
-            dbg!(&gg);
-            for ggg in &gg.outputs {
-                let gggg = input.gates.get(ggg).unwrap();
-                dbg!(gggg);
-            }
+        if gate.outputs.contains(&target) {
+            assert!(matches!(gate.gate_type, GateType::Conjunction { .. }));
+
+            let periods: Vec<usize> = gate
+                .inputs
+                .iter()
+                .map(|x| find_hits(input, (*x, gate.id, true)).unwrap())
+                .collect();
+
+            return periods.into_iter().fold(1, |acc, x| acc.lcm(&x)) as u64;
         }
     }
 
@@ -346,10 +260,5 @@ mod tests {
     fn test_stage1_2() {
         let input = super::parse(TEST_INPUT2).unwrap();
         assert_eq!(super::solve_stage1(&input), 11687500);
-    }
-    #[test]
-    fn test_stage2() {
-        let input = super::parse(TEST_INPUT).unwrap();
-        assert_eq!(super::solve_stage2(&input), 71503);
     }
 }
