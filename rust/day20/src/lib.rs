@@ -160,13 +160,11 @@ fn parse_game(input: &str) -> IResult<&str, State> {
         for output in gate.outputs {
             if let Some(g) = gate_map.get_mut(&output) {
                 g.inputs.push(gate.id);
-                match g.gate_type {
-                    GateType::Conjunction {
-                        ref mut input_states,
-                    } => {
-                        input_states.insert(gate.id, false);
-                    }
-                    _ => {}
+                if let GateType::Conjunction {
+                    ref mut input_states,
+                } = g.gate_type
+                {
+                    input_states.insert(gate.id, false);
                 }
             }
         }
@@ -201,15 +199,19 @@ fn solve_stage2(input: &State) -> u64 {
     //dbg!(&input.gates);
 
     for gate in input.gates.values() {
+        // find the single gate that outputs to rx
         if gate.outputs.contains(&target) {
+            // this is just a conjunction gate with conjunction input
             assert!(matches!(gate.gate_type, GateType::Conjunction { .. }));
 
+            // we get the period of each input
             let periods: Vec<usize> = gate
                 .inputs
                 .iter()
                 .map(|x| find_hits(input, (*x, gate.id, true)).unwrap())
                 .collect();
 
+            // and get the LCM
             return periods.into_iter().fold(1, |acc, x| acc.lcm(&x)) as u64;
         }
     }
