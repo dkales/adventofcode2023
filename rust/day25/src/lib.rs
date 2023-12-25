@@ -79,14 +79,14 @@ impl<'a> AdventOfCodeDay<'a> for Day25Solver {
 
     type Part1Output = u64;
 
-    type Part2Output = u64;
+    type Part2Output = String;
 
     fn solve_part1(input: &Self::ParsedInput) -> Self::Part1Output {
         solve_stage1(input)
     }
 
     fn solve_part2(_input: &Self::ParsedInput) -> Self::Part2Output {
-        todo!()
+        "".into()
     }
 
     fn parse_input(input: &'a str) -> Self::ParsedInput {
