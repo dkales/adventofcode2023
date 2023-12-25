@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop)]
 use core::panic;
 use std::collections::HashSet;
 
@@ -12,7 +13,7 @@ pub struct Brick {
 }
 
 impl Brick {
-    fn drop_if_possible(&mut self, grid: &mut Vec<Vec<(usize, usize)>>) -> bool {
+    fn drop_if_possible(&mut self, grid: &mut [Vec<(usize, usize)>]) -> bool {
         let mut drop_distance = usize::MAX;
         for i in self.start.0..=self.end.0 {
             for j in self.start.1..=self.end.1 {
