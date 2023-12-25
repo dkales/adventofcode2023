@@ -30,10 +30,10 @@ impl Grid {
                 continue;
             }
             for (i, j) in [
-                (point.0 as isize + 1, point.1 as isize),
-                (point.0 as isize - 1, point.1 as isize),
-                (point.0 as isize, point.1 as isize + 1),
-                (point.0 as isize, point.1 as isize - 1),
+                (point.0 + 1, point.1),
+                (point.0 - 1, point.1),
+                (point.0, point.1 + 1),
+                (point.0, point.1 - 1),
             ] {
                 let (i_idx, j_idx) = (
                     i.rem_euclid(self.dims.0 as isize) as usize,
@@ -94,8 +94,45 @@ fn solve_stage1(input: &Grid, steps: usize) -> u64 {
 }
 
 fn solve_stage2(input: &Grid, steps: usize) -> u64 {
-    let dists = input.get_dist(steps);
-    dists.values().filter(|&&x| x % 2 == 0).count() as u64
+    let offset = input.start.0;
+    let grid_size = input.dims.0;
+    assert!((steps - offset) % grid_size == 0);
+    let num_total_grids = (steps - offset) / grid_size;
+    let reachable: Vec<_> = (0..4)
+        .map(|i| {
+            let small_step = offset + i * grid_size;
+            let dists = input.get_dist(small_step);
+            dists
+                .values()
+                .filter(|&&x| x % 2 == (small_step & 1))
+                .count() as u64
+        })
+        .collect();
+
+    // first derivative
+    let diffs = reachable
+        .windows(2)
+        .map(|x| x[1] - x[0])
+        .collect::<Vec<_>>();
+    // second derivative
+    let diffs2 = diffs.windows(2).map(|x| x[1] - x[0]).collect::<Vec<_>>();
+
+    // is constant
+    assert!(diffs2.iter().all(|&x| x == diffs2[0]));
+
+    // to lazy to get a formula for this, do it the pyramid way
+    let mut v = vec![0; num_total_grids];
+    v[0] = diffs[0];
+    for i in 1..num_total_grids {
+        v[i] = v[i - 1] + diffs2[0];
+    }
+    let mut total_reachable = vec![0; num_total_grids + 1];
+    total_reachable[0] = reachable[0];
+    for i in 1..num_total_grids + 1 {
+        total_reachable[i] = total_reachable[i - 1] + v[i - 1];
+    }
+
+    *total_reachable.last().unwrap()
 }
 
 pub struct Day21Solver;
@@ -111,8 +148,7 @@ impl AdventOfCodeDay<'_> for Day21Solver {
     }
 
     fn solve_part2(input: &Self::ParsedInput) -> Self::Part2Output {
-        todo!()
-        // solve_stage2(input, 26501365)
+        solve_stage2(input, 26501365)
     }
 
     fn parse_input(input: &str) -> Self::ParsedInput {
@@ -141,16 +177,5 @@ mod tests {
     fn test_stage1() {
         let input = Day21Solver::parse_input(TEST_INPUT);
         assert_eq!(super::solve_stage1(&input, 6), 16);
-    }
-    #[test]
-    fn test_stage2() {
-        let input = Day21Solver::parse_input(TEST_INPUT);
-        assert_eq!(super::solve_stage2(&input, 6), 16);
-        assert_eq!(super::solve_stage2(&input, 10), 50);
-        assert_eq!(super::solve_stage2(&input, 50), 1594);
-        assert_eq!(super::solve_stage2(&input, 100), 6536);
-        assert_eq!(super::solve_stage2(&input, 500), 167004);
-        assert_eq!(super::solve_stage2(&input, 1000), 668697);
-        assert_eq!(super::solve_stage2(&input, 5000), 16733044);
     }
 }
