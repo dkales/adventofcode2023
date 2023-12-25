@@ -11,15 +11,15 @@ pub struct Connection<'a> {
 
 impl Connection<'_> {}
 
-fn parse<'a>(s: &'a str) -> Connection<'a> {
+fn parse(s: &str) -> Connection<'_> {
     let (name, conns) = s.split_once(": ").unwrap();
     Connection {
         name,
-        connections: conns.split(" ").collect(),
+        connections: conns.split(' ').collect(),
     }
 }
 
-fn solve_stage1<'a>(input: &[Connection<'a>]) -> u64 {
+fn solve_stage1(input: &[Connection<'_>]) -> u64 {
     let mut graph_adj: HashMap<String, Vec<String>> = HashMap::new();
 
     for conn in input {
