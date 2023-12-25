@@ -32,3 +32,4 @@ day20 = { path = "../day20" }
 day21 = { path = "../day21" }
 day22 = { path = "../day22" }
 day23 = { path = "../day23" }
+day24 = { path = "../day24" }
